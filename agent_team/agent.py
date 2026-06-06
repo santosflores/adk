@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 AGENT_MODEL = "gemini-3.1-flash-lite"
 RETRY_CONFIG = types.GenerateContentConfig(
     http_options=types.HttpOptions(
-        retry_options=types.HttpRetryOptions(initial_delay=1, attempts=2),
+        retry_options=types.HttpRetryOptions(initial_delay=1, attempts=5),
     )
 )
 

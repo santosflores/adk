@@ -58,7 +58,7 @@ def before_model_callback(
     callback_context: CallbackContext, llm_request: LlmRequest
 ) -> Optional[LlmResponse]:
     agent_name = callback_context.agent_name
-    logger.info(f"Callback: before_model_callback running for agent: {agent_name}")
+    logger.info(f"[before_model_callback] - Entering agent: {agent_name}")
     logger.debug(f"callback_context: {vars(callback_context)}")
 
 
@@ -96,17 +96,17 @@ def get_weather(city: str, tool_context: ToolContext) -> dict:
 
         report = f"The weather in {city.capitalize()} is {condition} with a temperature of {temp_value:.0f}{temp_unit}."
         result = {"status": "success", "report": report}
-        logger.info(f"Tool: Generated report in {preferred_unit}. Result: {result}")
+        logger.info(f"[tool_call] - generated report in {preferred_unit}. Result: {result}")
 
         # Example of writing back to state (optional for this tool)
         tool_context.state["last_city_checked_stateful"] = city
-        logger.info(f"Tool: Updated state 'last_city_checked_stateful': {city}")
+        logger.info(f"[tool_call] - updated state 'last_city_checked_stateful': {city}")
 
         return result
     else:
         # Handle city not found
         error_msg = f"Sorry, I don't have weather information for '{city}'."
-        logger.error(f"Tool: City '{city}' not found.")
+        logger.error(f"[tool_call] - city '{city}' not found.")
         return {"status": "error", "error_message": error_msg}
 
 
@@ -144,18 +144,18 @@ def say_hello(name: Optional[str] = None) -> str:
     """
     if name:
         greeting = f"Hello, {name}!"
-        logger.info(f"Tool: say_hello called with name: {name}")
+        logger.info(f"[tool_call] - say_hello called with name: {name}")
     else:
         greeting = (
             "Hello there!"  # Default greeting if name is None or not explicitly passed
         )
         logger.info(
-            f"Tool: say_hello called without a specific name (name_arg_value: {name})"
+            f"[tool_call] - say_hello called without a specific name (name_arg_value: {name})"
         )
     return greeting
 
 
 def say_goodbye() -> str:
     """Provides a simple farewell message to conclude the conversation."""
-    logger.info(f"Tool: say_goodbye called")
+    logger.info(f"[tool_call] - say_goodbye called")
     return "Goodbye! Have a great day."

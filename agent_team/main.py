@@ -84,9 +84,8 @@ async def run_team_conversation():
     retrieved_session = await session_service.get_session(app_name=APP_NAME,
                                                             user_id=USER_ID,
                                                             session_id =SESSION_ID)
-    logger.info("Initial Session State")
     if retrieved_session:
-        logger.info(retrieved_session.state)
+        logger.info(f"Initial Session State: {retrieved_session.state}")
     else:
         logger.error("Error: Could not retrieve session.")
     runner_agent_team = Runner(  # Or use InMemoryRunner
