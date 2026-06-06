@@ -6,7 +6,7 @@ own with the `adk` CLI.
 
 ## Repository structure
 
-```
+```sh
 adk/
 ├── requirements.txt        # shared Python dependencies
 ├── .venv/                  # virtual environment (git-ignored)
@@ -30,12 +30,12 @@ adk/
 
 Every agent directory follows the same shape:
 
-| File           | Purpose                                                          |
+| File           | Purpose                                                         |
 | -------------- | --------------------------------------------------------------- |
-| `__init__.py`  | Marks the package and re-exports `agent` (`from . import agent`) |
+| `__init__.py`  | Marks the package and re-exports `agent` (`from . import agent`)|
 | `agent.py`     | Defines `root_agent` — the entry point ADK discovers            |
 | `tools/`       | (optional) Tool functions and lifecycle callbacks               |
-| `main.py`      | (optional) Standalone script that runs a conversation directly   |
+| `main.py`      | (optional) Standalone script that runs a conversation directly  |
 | `.env`         | Per-agent Google Cloud / Vertex AI configuration                |
 
 **Imports are package-relative** (e.g. `from .tools import ...`). This means agent
