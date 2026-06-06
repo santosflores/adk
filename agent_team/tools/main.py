@@ -1,5 +1,8 @@
 import datetime
 import zoneinfo
+import logging
+
+logger = logging.getLogger(__name__)
 
 from typing import Optional  # Make sure to import Optional
 from zoneinfo import ZoneInfo
@@ -76,12 +79,12 @@ def say_hello(name: Optional[str] = None) -> str:
     """
     if name:
         greeting = f"Hello, {name}!"
-        print(f"--- Tool: say_hello called with name: {name} ---")
+        logger.info(f"--- Tool: say_hello called with name: {name} ---")
     else:
         greeting = (
             "Hello there!"  # Default greeting if name is None or not explicitly passed
         )
-        print(
+        logger.info(
             f"--- Tool: say_hello called without a specific name (name_arg_value: {name}) ---"
         )
     return greeting
@@ -89,5 +92,5 @@ def say_hello(name: Optional[str] = None) -> str:
 
 def say_goodbye() -> str:
     """Provides a simple farewell message to conclude the conversation."""
-    print(f"--- Tool: say_goodbye called ---")
+    logger.info(f"--- Tool: say_goodbye called ---")
     return "Goodbye! Have a great day."

@@ -1,10 +1,14 @@
+import os
 import asyncio
+import logging
 
 from google.adk.sessions import InMemorySessionService, Session
 from google.adk.runners import Runner
 from google.genai import types  # For creating message Content/Parts
 from agent import weather_agent_team
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -27,7 +31,7 @@ def extract_text(content) -> str:
 
 async def call_agent_async(query: str, runner, user_id, session_id):
     """Sends a query to the agent and prints the final response."""
-    print(f"\n>>> User Query: {query}")
+    logger.info(f"\n>>> User Query: {query}")
 
     # Prepare the user's message in ADK format
     content = types.Content(role="user", parts=[types.Part(text=query)])
@@ -39,8 +43,8 @@ async def call_agent_async(query: str, runner, user_id, session_id):
         user_id=user_id, session_id=session_id, new_message=content
     ):
         # You can uncomment the line below to see *all* events during execution
-        print(
-            f"  [Event] Author: {event.author}, Type: {type(event).__name__}, Final: {event.is_final_response()}, Content: {event.content}"
+        logger.debug(
+            f"[Event] Author: {event.author}, Type: {type(event).__name__}, Final: {event.is_final_response()}, Content: {event.content}"
         )
 
         # Key Concept: is_final_response() marks the concluding message for the turn.
@@ -57,23 +61,23 @@ async def call_agent_async(query: str, runner, user_id, session_id):
             # Add more checks here if needed (e.g., specific error codes)
             # break  # Stop processing events once the final response is found
 
-    print(f"<<< Agent Response: {final_response_text}")
+    logger.info(f"<<< Agent Response: {final_response_text}")
 
 
 async def run_team_conversation():
-    print("\n--- Testing Agent Team Delegation ---")
+    logger.info("\n--- Testing Agent Team Delegation ---")
 
-    session = await session_service.create_session(
+    await session_service.create_session(
         app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
     )
-    print(
+    logger.info(
         f"Session created: App='{APP_NAME}', User='{USER_ID}', Session='{SESSION_ID}'"
     )
 
     runner_agent_team = Runner(  # Or use InMemoryRunner
         agent=weather_agent_team, app_name=APP_NAME, session_service=session_service
     )
-    print(f"Runner created for agent '{weather_agent_team.name}'.")
+    logger.info(f"Runner created for agent '{weather_agent_team.name}'.")
 
     # --- Interactions using await (correct within async def) ---
     await call_agent_async(
@@ -97,10 +101,10 @@ async def run_team_conversation():
 
 
 if __name__ == "__main__":  # Ensures this runs only when script is executed directly
-    print("Executing using 'asyncio.run()' (for standard Python scripts)...")
+    logging.basicConfig(filename='myapp.log', level=logging.INFO)
+    logger.info("Executing using 'asyncio.run()' (for standard Python scripts)...")
     try:
         # This creates an event loop, runs your async function, and closes the loop.
         asyncio.run(run_team_conversation())
     except Exception as e:
-        print(f"An error occurred: {e}")
-
+        logger.error(f"An error occurred: {e}")
