@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from agent import weather_agent_team
+from agent import root_agent
 from dotenv import load_dotenv
 from google.adk.sessions import InMemorySessionService, Session
 from google.adk.runners import Runner
@@ -79,19 +79,19 @@ async def run_team_conversation():
     logger.info(
         f"Session created: App='{APP_NAME}', User='{USER_ID}', Session='{SESSION_ID}'"
     )
-    
+
     # Verify the initial state was set correctly
-    retrieved_session = await session_service.get_session(app_name=APP_NAME,
-                                                            user_id=USER_ID,
-                                                            session_id =SESSION_ID)
+    retrieved_session = await session_service.get_session(
+        app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
+    )
     if retrieved_session:
         logger.info(f"Initial Session State: {retrieved_session.state}")
     else:
         logger.error("Error: Could not retrieve session.")
     runner_agent_team = Runner(  # Or use InMemoryRunner
-        agent=weather_agent_team, app_name=APP_NAME, session_service=session_service
+        agent=root_agent, app_name=APP_NAME, session_service=session_service
     )
-    logger.info(f"Runner created for agent '{weather_agent_team.name}'.")
+    logger.info(f"Runner created for agent '{root_agent.name}'.")
 
     # Interactions using await (correct within async def) ---
     await call_agent_async(

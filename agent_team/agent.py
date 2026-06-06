@@ -69,8 +69,7 @@ except Exception as e:
 if greeting_agent and farewell_agent and "get_weather" in globals():
     # Let's use a capable Gemini model for the root agent to handle orchestration
     root_agent_model = AGENT_MODEL
-
-    weather_agent_team = Agent(
+    root_agent = Agent(
         name="weather_agent_v2",  # Give it a new version name
         model=root_agent_model,
         description="The main coordinator agent. Handles weather requests and delegates greetings/farewells to specialists.",
