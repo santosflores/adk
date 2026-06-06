@@ -1,1 +1,1 @@
-from .time import get_current_time
+from .time import get_current_time, CityTime

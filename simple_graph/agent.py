@@ -2,27 +2,22 @@ import logging
 
 from google.adk import Agent, Workflow, Event
 from google.genai import types
-from pydantic import BaseModel
+from .tools import get_current_time, CityTime
 
 logger = logging.getLogger(__name__)
 
 AGENT_MODEL = "gemini-3.1-flash-lite"
 
 
-class CityTime(BaseModel):
-    time_info: str
-    city: str
-
-
 def lookup_time_function(node_input: str):
     """Simulate returning the current time in the specified city."""
-    return CityTime(time_info="10:10 AM", city=node_input)
+    return get_current_time(node_input)
 
 
 city_generator_agent = Agent(
     name="city_generator_agent",
     model=AGENT_MODEL,
-    instruction="Return the name of a random city.",
+    instruction="Return the name of a random city from America.",
     output_schema=str,
 )
 

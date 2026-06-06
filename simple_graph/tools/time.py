@@ -1,7 +1,16 @@
 import datetime
+import logging
 import zoneinfo
 
+from pydantic import BaseModel
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
+
+class CityTime(BaseModel):
+    time_info: str
+    city: str
+
 
 def get_zone_by_city(city_name: str):
     # Normalize input (replace spaces with underscores to match IANA format)
@@ -13,9 +22,11 @@ def get_zone_by_city(city_name: str):
         if tz.lower().endswith(f"/{search_term}"):
             return ZoneInfo(tz)
 
+    logger.error("about to raise ValueError")
     raise ValueError(f"No timezone found for city: {city_name}")
 
-def get_current_time(city: str) -> dict:
+
+def get_current_time(city: str) -> CityTime:
     """Returns the current time in a specified city.
 
     Args:
@@ -30,9 +41,7 @@ def get_current_time(city: str) -> dict:
         report = (
             f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
         )
-        return {"status": "success", "report": report}
+        return CityTime(time_info=report, city=city)
     except:
-        return {
-            "status": "error",
-            "error_message": (f"Sorry, I don't have timezone information for {city}."),
-        }
+        logger.error("get_current_time raised")
+        raise
