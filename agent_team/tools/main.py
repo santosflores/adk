@@ -2,12 +2,12 @@ import datetime
 import zoneinfo
 import logging
 
-from google.adk.tools import ToolContext
+from google.adk.tools import ToolContext, BaseTool
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.agents.callback_context import CallbackContext
 
-from typing import Optional
+from typing import Optional, Dict, Any
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,34 @@ def get_zone_by_city(city_name: str):
             return ZoneInfo(tz)
 
     raise ValueError(f"No timezone found for city: {city_name}")
+
+
+def before_agent_callback(
+    callback_context: CallbackContext,
+):
+    agent_name = callback_context.agent_name
+    invocation_id = callback_context.invocation_id
+    current_state = callback_context.state.to_dict()
+    logger.info(
+        f"[before_agent_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
+    )
+    logger.debug(
+        f"[current_state] {current_state}"
+    )
+
+
+def before_tool_callback(
+    tool: BaseTool, args: Dict[str, Any], tool_context: ToolContext
+):
+    agent_name = tool_context.agent_name
+    invocation_id = tool_context.invocation_id
+    current_state = tool_context.state.to_dict()
+    logger.info(
+        f"[before_tool_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
+    )
+    logger.debug(
+        f"[current_state] {current_state}"
+    )
 
 
 def before_model_callback(
