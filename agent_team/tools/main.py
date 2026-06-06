@@ -26,6 +26,18 @@ def get_zone_by_city(city_name: str):
     raise ValueError(f"No timezone found for city: {city_name}")
 
 
+def after_agent_callback(
+    callback_context: CallbackContext,
+):
+    agent_name = callback_context.agent_name
+    invocation_id = callback_context.invocation_id
+    current_state = callback_context.state.to_dict()
+    logger.info(
+        f"[after_agent_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
+    )
+    logger.debug(f"[current_state] {current_state}")
+
+
 def before_agent_callback(
     callback_context: CallbackContext,
 ):
@@ -35,9 +47,7 @@ def before_agent_callback(
     logger.info(
         f"[before_agent_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
     )
-    logger.debug(
-        f"[current_state] {current_state}"
-    )
+    logger.debug(f"[current_state] {current_state}")
 
 
 def before_tool_callback(
@@ -49,9 +59,19 @@ def before_tool_callback(
     logger.info(
         f"[before_tool_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
     )
-    logger.debug(
-        f"[current_state] {current_state}"
+    logger.debug(f"[current_state] {current_state}")
+
+
+def after_tool_callback(
+    tool: BaseTool, args: Dict[str, Any], tool_context: ToolContext, tool_response: Dict
+):
+    agent_name = tool_context.agent_name
+    invocation_id = tool_context.invocation_id
+    current_state = tool_context.state.to_dict()
+    logger.info(
+        f"[after_tool_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
     )
+    logger.debug(f"[current_state] {current_state}")
 
 
 def before_model_callback(
@@ -60,6 +80,16 @@ def before_model_callback(
     agent_name = callback_context.agent_name
     logger.info(f"[before_model_callback] - Entering agent: {agent_name}")
     logger.debug(f"callback_context: {vars(callback_context)}")
+
+
+def after_model_callback(callback_context: CallbackContext, llm_response: LlmResponse):
+    agent_name = callback_context.agent_name
+    invocation_id = callback_context.invocation_id
+    current_state = callback_context.state.to_dict()
+    logger.info(
+        f"[after_model_callback] - Entering agent: {agent_name} (InvocationId: {invocation_id})"
+    )
+    logger.debug(f"[current_state] {current_state}")
 
 
 def get_weather(city: str, tool_context: ToolContext) -> dict:
@@ -96,7 +126,9 @@ def get_weather(city: str, tool_context: ToolContext) -> dict:
 
         report = f"The weather in {city.capitalize()} is {condition} with a temperature of {temp_value:.0f}{temp_unit}."
         result = {"status": "success", "report": report}
-        logger.info(f"[tool_call] - generated report in {preferred_unit}. Result: {result}")
+        logger.info(
+            f"[tool_call] - generated report in {preferred_unit}. Result: {result}"
+        )
 
         # Example of writing back to state (optional for this tool)
         tool_context.state["last_city_checked_stateful"] = city

@@ -1,6 +1,16 @@
 from google.genai import types  # For creating message Content/Parts
 from google.adk.agents import Agent
-from tools import get_weather, say_hello, say_goodbye, before_model_callback, before_agent_callback, before_tool_callback
+from tools import (
+    get_weather,
+    say_hello,
+    say_goodbye,
+    before_model_callback,
+    before_agent_callback,
+    before_tool_callback,
+    after_tool_callback,
+    after_agent_callback,
+    after_model_callback,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -76,14 +86,17 @@ if greeting_agent and farewell_agent and "get_weather" in globals():
             get_weather
         ],  # Root agent still needs the weather tool for its core task
         # Key change: Link the sub-agents here!
-        sub_agents=[greeting_agent, farewell_agent],        
+        sub_agents=[greeting_agent, farewell_agent],
         generate_content_config=RETRY_CONFIG,
         before_model_callback=before_model_callback,
+        after_model_callback=after_model_callback,
         before_agent_callback=before_agent_callback,
-        before_tool_callback=before_tool_callback
+        after_agent_callback=after_agent_callback,
+        before_tool_callback=before_tool_callback,
+        after_tool_callback=after_tool_callback
     )
     logger.info(
-        f"✅ Root Agent '{weather_agent_team.name}' created using model '{root_agent_model}' with sub-agents: {[sa.name for sa in weather_agent_team.sub_agents]}"
+        f"✅ Root Agent '{root_agent.name}' created using model '{root_agent_model}' with sub-agents: {[sa.name for sa in root_agent.sub_agents]}"
     )
 
 else:
