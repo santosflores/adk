@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from agent import root_agent
+from .agent import root_agent
 from dotenv import load_dotenv
 from google.adk.sessions import InMemorySessionService, Session
 from google.adk.runners import Runner
