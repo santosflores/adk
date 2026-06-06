@@ -6,6 +6,7 @@ from google.adk.tools import ToolContext
 from typing import Optional  # Make sure to import Optional
 from zoneinfo import ZoneInfo
 
+logger = logging.getLogger(__name__)
 
 def get_zone_by_city(city_name: str):
     # Normalize input (replace spaces with underscores to match IANA format)
@@ -103,18 +104,18 @@ def say_hello(name: Optional[str] = None) -> str:
     """
     if name:
         greeting = f"Hello, {name}!"
-        logger.info(f"--- Tool: say_hello called with name: {name} ---")
+        logger.info(f"Tool: say_hello called with name: {name}")
     else:
         greeting = (
             "Hello there!"  # Default greeting if name is None or not explicitly passed
         )
         logger.info(
-            f"--- Tool: say_hello called without a specific name (name_arg_value: {name}) ---"
+            f"Tool: say_hello called without a specific name (name_arg_value: {name})"
         )
     return greeting
 
 
 def say_goodbye() -> str:
     """Provides a simple farewell message to conclude the conversation."""
-    logger.info(f"--- Tool: say_goodbye called ---")
+    logger.info(f"Tool: say_goodbye called")
     return "Goodbye! Have a great day."

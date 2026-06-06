@@ -32,7 +32,7 @@ def extract_text(content) -> str:
 
 async def call_agent_async(query: str, runner, user_id, session_id):
     """Sends a query to the agent and prints the final response."""
-    logger.info(f"\n>>> User Query: {query}")
+    logger.info(f">>> User Query: {query}")
 
     # Prepare the user's message in ADK format
     content = types.Content(role="user", parts=[types.Part(text=query)])
@@ -66,7 +66,7 @@ async def call_agent_async(query: str, runner, user_id, session_id):
 
 
 async def run_team_conversation():
-    logger.info("\n--- Testing Agent Team Delegation ---")
+    logger.info("Testing Agent Team Delegation")
 
     await session_service.create_session(
         app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
@@ -74,13 +74,22 @@ async def run_team_conversation():
     logger.info(
         f"Session created: App='{APP_NAME}', User='{USER_ID}', Session='{SESSION_ID}'"
     )
-
+    
+    # Verify the initial state was set correctly
+    retrieved_session = await session_service.get_session(app_name=APP_NAME,
+                                                            user_id=USER_ID,
+                                                            session_id =SESSION_ID)
+    logger.info("Initial Session State")
+    if retrieved_session:
+        logger.info(retrieved_session.state)
+    else:
+        logger.error("Error: Could not retrieve session.")
     runner_agent_team = Runner(  # Or use InMemoryRunner
         agent=weather_agent_team, app_name=APP_NAME, session_service=session_service
     )
     logger.info(f"Runner created for agent '{weather_agent_team.name}'.")
 
-    # --- Interactions using await (correct within async def) ---
+    # Interactions using await (correct within async def) ---
     await call_agent_async(
         query="Hello there! My name is Santos",
         runner=runner_agent_team,
@@ -103,7 +112,7 @@ async def run_team_conversation():
 
 if __name__ == "__main__":  # Ensures this runs only when script is executed directly
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(message)s",
         datefmt="[%X]",
         handlers=[RichHandler(rich_tracebacks=True)],
