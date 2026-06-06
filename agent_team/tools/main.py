@@ -2,8 +2,7 @@ import datetime
 import zoneinfo
 import logging
 
-logger = logging.getLogger(__name__)
-
+from google.adk.tools import ToolContext
 from typing import Optional  # Make sure to import Optional
 from zoneinfo import ZoneInfo
 
@@ -21,7 +20,7 @@ def get_zone_by_city(city_name: str):
     raise ValueError(f"No timezone found for city: {city_name}")
 
 
-def get_weather(city: str) -> dict:
+def get_weather(city: str, tool_context: ToolContext) -> dict:
     """Retrieves the current weather report for a specified city.
 
     Args:
@@ -30,19 +29,44 @@ def get_weather(city: str) -> dict:
     Returns:
         dict: status and result or error msg.
     """
-    if city.lower() == "new york":
-        return {
-            "status": "success",
-            "report": (
-                "The weather in New York is sunny with a temperature of 25 degrees"
-                " Celsius (77 degrees Fahrenheit)."
-            ),
-        }
+    preferred_unit = tool_context.state.get("user_preference_temperature_unit", None)
+    city_normalized = city.lower().replace(" ", "")
+    logger.info(f"Preferred unit: {preferred_unit} City Normalized: {city_normalized}")
+    # Mock weather data (always stored in Celsius internally)
+    mock_weather_db = {
+        "newyork": {"temp_c": 25, "condition": "sunny"},
+        "london": {"temp_c": 15, "condition": "cloudy"},
+        "tokyo": {"temp_c": 18, "condition": "light rain"},
+    }
+
+    if city_normalized in mock_weather_db:
+        data = mock_weather_db[city_normalized]
+        temp_c = data["temp_c"]
+        condition = data["condition"]
+
+        # Format temperature based on state preference
+        if preferred_unit == "Fahrenheit":
+            temp_value = (temp_c * 9/5) + 32 # Calculate Fahrenheit
+            temp_unit = "°F"
+        else: # Default to Celsius
+            temp_value = temp_c
+            temp_unit = "°C"
+
+        report = f"The weather in {city.capitalize()} is {condition} with a temperature of {temp_value:.0f}{temp_unit}."
+        result = {"status": "success", "report": report}
+        logger.info(f"Tool: Generated report in {preferred_unit}. Result: {result}")
+
+        # Example of writing back to state (optional for this tool)
+        tool_context.state["last_city_checked_stateful"] = city
+        logger.info(f"Tool: Updated state 'last_city_checked_stateful': {city}")
+
+        return result
     else:
-        return {
-            "status": "error",
-            "error_message": f"Weather information for '{city}' is not available.",
-        }
+        # Handle city not found
+        error_msg = f"Sorry, I don't have weather information for '{city}'."
+        logger.error(f"Tool: City '{city}' not found.")
+        return {"status": "error", "error_message": error_msg}
+
 
 
 def get_current_time(city: str) -> dict:
