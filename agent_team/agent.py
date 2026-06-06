@@ -1,10 +1,16 @@
+from google.genai import types  # For creating message Content/Parts
 from google.adk.agents import Agent
 from tools import get_weather, say_hello, say_goodbye
 import logging
 
 logger = logging.getLogger(__name__)
 
-AGENT_MODEL = "gemini-3.5-flash"
+AGENT_MODEL = "gemini-3.1-flash-lite"
+RETRY_CONFIG = types.GenerateContentConfig(
+    http_options=types.HttpOptions(
+        retry_options=types.HttpRetryOptions(initial_delay=1, attempts=2),
+    )
+)
 
 # --- Greeting Agent ---
 greeting_agent = None
@@ -20,6 +26,7 @@ try:
         "Do not engage in any other conversation or tasks.",
         description="Handles simple greetings and hellos using the 'say_hello' tool.",  # Crucial for delegation
         tools=[say_hello],
+        generate_content_config=RETRY_CONFIG,
     )
     logger.info(
         f"✅ Agent '{greeting_agent.name}' created using model '{greeting_agent.model}'."
@@ -41,6 +48,7 @@ try:
         "Do not perform any other actions.",
         description="Handles simple farewells and goodbyes using the 'say_goodbye' tool.",  # Crucial for delegation
         tools=[say_goodbye],
+        generate_content_config=RETRY_CONFIG,
     )
     logger.info(
         f"✅ Agent '{farewell_agent.name}' created using model '{farewell_agent.model}'."
@@ -68,7 +76,8 @@ if greeting_agent and farewell_agent and "get_weather" in globals():
             get_weather
         ],  # Root agent still needs the weather tool for its core task
         # Key change: Link the sub-agents here!
-        sub_agents=[greeting_agent, farewell_agent],
+        sub_agents=[greeting_agent, farewell_agent],        
+        generate_content_config=RETRY_CONFIG,
     )
     logger.info(
         f"✅ Root Agent '{weather_agent_team.name}' created using model '{root_agent_model}' with sub-agents: {[sa.name for sa in weather_agent_team.sub_agents]}"
