@@ -1,16 +1,17 @@
-import os
 import asyncio
 import logging
 
+from agent import weather_agent_team
+from dotenv import load_dotenv
 from google.adk.sessions import InMemorySessionService, Session
 from google.adk.runners import Runner
 from google.genai import types  # For creating message Content/Parts
-from agent import weather_agent_team
-from dotenv import load_dotenv
+from rich.logging import RichHandler
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
 
 session_service = InMemorySessionService()
 APP_NAME = "weather_tutorial_agent_team"
@@ -101,8 +102,12 @@ async def run_team_conversation():
 
 
 if __name__ == "__main__":  # Ensures this runs only when script is executed directly
-    logging.basicConfig(filename='myapp.log', level=logging.INFO)
-    logger.info("Executing using 'asyncio.run()' (for standard Python scripts)...")
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
     try:
         # This creates an event loop, runs your async function, and closes the loop.
         asyncio.run(run_team_conversation())
