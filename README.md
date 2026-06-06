@@ -101,11 +101,78 @@ uv run python -m <agent_dir>.main      # e.g. uv run python -m agent_team.main
 > script breaks the package-relative imports. Always use the `-m <agent_dir>.main`
 > form from the workspace root.
 
+### REST API server — call agents over HTTP
+
+Starts a FastAPI server exposing every agent over REST (defaults to
+`http://127.0.0.1:8000`):
+
+```bash
+adk api_server                 # add --port 8080 to change the port
+```
+
+The **`app_name` in requests is the agent directory name** (e.g. `agent_team`).
+
+**1. Create a session** (required before the first run; `state` is optional):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/apps/agent_team/users/u_123/sessions/s_123 \
+  -H "Content-Type: application/json" \
+  -d '{"state": {"user_preference_temperature_unit": "Celsius"}}'
+```
+
+**2. Run the agent** — returns a JSON array of all events; the final reply is the
+`text` in the last event's `content.parts`:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "app_name": "agent_team",
+    "user_id": "u_123",
+    "session_id": "s_123",
+    "new_message": {"role": "user", "parts": [{"text": "What is the weather in New York?"}]}
+  }'
+```
+
+**Stream responses (SSE)** — same body against `/run_sse`; add `"streaming": true`
+for token-level streaming:
+
+```bash
+curl -N -X POST http://127.0.0.1:8000/run_sse \
+  -H "Content-Type: application/json" \
+  -d '{
+    "app_name": "agent_team",
+    "user_id": "u_123",
+    "session_id": "s_123",
+    "new_message": {"role": "user", "parts": [{"text": "Hello there! My name is Santos"}]},
+    "streaming": true
+  }'
+```
+
+Useful inspection endpoints:
+
+```bash
+curl -s http://127.0.0.1:8000/list-apps                                    # agents served
+curl -s http://127.0.0.1:8000/apps/agent_team/users/u_123/sessions/s_123   # inspect a session
+```
+
+`/run` and `/run_sse` request body fields:
+
+| Field         | Required | Notes                                                          |
+| ------------- | -------- | -------------------------------------------------------------- |
+| `app_name`    | yes      | Agent directory name (e.g. `agent_team`)                       |
+| `user_id`     | yes      | Any string                                                     |
+| `session_id`  | yes      | Must already exist (create it first, step 1)                   |
+| `new_message` | yes      | `{"role": "user", "parts": [{"text": "..."}]}`                 |
+| `streaming`   | no       | `true` for token-level streaming (use with `/run_sse`)         |
+| `state_delta` | no       | Dict merged into session state for this turn                   |
+
 ## Quick reference
 
 | Goal                          | Command (from workspace root)         |
 | ----------------------------- | ------------------------------------- |
 | Browse all agents in Web UI   | `adk web`                             |
 | Chat with one agent (CLI)     | `adk run <agent_dir>`                 |
+| Serve agents over REST        | `adk api_server`                      |
 | Run an agent's script runner  | `uv run python -m <agent_dir>.main`   |
 | Install dependencies          | `uv pip install -r requirements.txt`  |
