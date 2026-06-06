@@ -17,6 +17,8 @@ session_service = InMemorySessionService()
 APP_NAME = "weather_tutorial_agent_team"
 USER_ID = "user_1_agent_team"
 SESSION_ID = "session_001_agent_team"
+# Define initial state data - user prefers Celsius initially
+initial_state = {"user_preference_temperature_unit": "Celsius"}
 
 
 def extract_text(content) -> str:
@@ -69,7 +71,10 @@ async def run_team_conversation():
     logger.info("Testing Agent Team Delegation")
 
     await session_service.create_session(
-        app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
+        app_name=APP_NAME,
+        user_id=USER_ID,
+        session_id=SESSION_ID,
+        state=initial_state,
     )
     logger.info(
         f"Session created: App='{APP_NAME}', User='{USER_ID}', Session='{SESSION_ID}'"
