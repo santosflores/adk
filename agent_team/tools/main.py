@@ -3,10 +3,15 @@ import zoneinfo
 import logging
 
 from google.adk.tools import ToolContext
-from typing import Optional  # Make sure to import Optional
+from google.adk.models.llm_request import LlmRequest
+from google.adk.models.llm_response import LlmResponse
+from google.adk.agents.callback_context import CallbackContext
+
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
+
 
 def get_zone_by_city(city_name: str):
     # Normalize input (replace spaces with underscores to match IANA format)
@@ -19,6 +24,14 @@ def get_zone_by_city(city_name: str):
             return ZoneInfo(tz)
 
     raise ValueError(f"No timezone found for city: {city_name}")
+
+
+def before_model_callback(
+    callback_context: CallbackContext, llm_request: LlmRequest
+) -> Optional[LlmResponse]:
+    agent_name = callback_context.agent_name
+    logger.info(f"Callback: before_model_callback running for agent: {agent_name}")
+    logger.debug(f"callback_context: {vars(callback_context)}")
 
 
 def get_weather(city: str, tool_context: ToolContext) -> dict:
@@ -47,9 +60,9 @@ def get_weather(city: str, tool_context: ToolContext) -> dict:
 
         # Format temperature based on state preference
         if preferred_unit == "Fahrenheit":
-            temp_value = (temp_c * 9/5) + 32 # Calculate Fahrenheit
+            temp_value = (temp_c * 9 / 5) + 32  # Calculate Fahrenheit
             temp_unit = "°F"
-        else: # Default to Celsius
+        else:  # Default to Celsius
             temp_value = temp_c
             temp_unit = "°C"
 
@@ -67,7 +80,6 @@ def get_weather(city: str, tool_context: ToolContext) -> dict:
         error_msg = f"Sorry, I don't have weather information for '{city}'."
         logger.error(f"Tool: City '{city}' not found.")
         return {"status": "error", "error_message": error_msg}
-
 
 
 def get_current_time(city: str) -> dict:
