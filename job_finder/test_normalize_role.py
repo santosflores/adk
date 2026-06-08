@@ -7,7 +7,8 @@ from job_finder.agent import normalize_role
     [
         ("engineer", "Engineer"),
         (" engineer ", "Engineer"),
-        ("software  engineer", "Software Engineer")
+        ("software  engineer", "Software Engineer"),
+        ("", "")
     ],
 )
 def test_normalize_role(raw, expected):
