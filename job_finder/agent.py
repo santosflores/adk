@@ -8,8 +8,14 @@ from google.genai import types
 from typing import Any
 
 AGENT_MODEL = "gemini-3.1-flash-lite"
-logger = logging.getLogger(__name__)
 CONFIDENCE_THRESHOLD = 0.95
+RETRY_CONFIG = types.GenerateContentConfig(
+    http_options=types.HttpOptions(
+        retry_options=types.HttpRetryOptions(initial_delay=1, attempts=5),
+    )
+)
+
+logger = logging.getLogger(__name__)
 
 
 @node
@@ -56,6 +62,7 @@ input_evaluator = Agent(
     instruction="""You are an evaluator. Your only goal is to evaluate an input and determine 
     if it is a valid job position name. Attach a confidence value""",
     output_schema=JobPosition,
+    generate_content_config=RETRY_CONFIG,
 )
 
 
