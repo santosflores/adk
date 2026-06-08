@@ -1,1 +1,1 @@
-from .main import normalize_role
+from .main import normalize_role, is_confident

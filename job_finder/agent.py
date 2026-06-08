@@ -1,7 +1,7 @@
 import logging
 
 from .models import JobPosition
-from .tools import normalize_role as normalize_role
+from .tools import normalize_role, is_confident
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
 from google.adk.workflow import node
@@ -9,7 +9,6 @@ from google.genai import types
 from typing import Any
 
 AGENT_MODEL = "gemini-3.1-flash-lite"
-CONFIDENCE_THRESHOLD = 0.95
 RETRY_CONFIG = types.GenerateContentConfig(
     http_options=types.HttpOptions(
         retry_options=types.HttpRetryOptions(initial_delay=1, attempts=5),
@@ -30,7 +29,7 @@ def normalize_role_node(node_input: Any):
 
 @node
 def check_confidence(node_input: Any):
-    if node_input["confidence"] >= CONFIDENCE_THRESHOLD:
+    if is_confident(node_input["confidence"]):
         return Event(
             output=node_input,
             actions=EventActions(
@@ -85,6 +84,7 @@ root_agent = Workflow(
             {
                 "accept": finish,
                 "retry": request_role,
+                "__DEFAULT__": input_evaluator
             },
         ),
         (request_role, normalize_role_node),
