@@ -2,25 +2,53 @@ import logging
 
 from .models import JobPosition
 from google.adk import Agent, Context, Workflow, Event
-from google.adk.events import RequestInput
+from google.adk.events import EventActions, RequestInput
 from google.adk.workflow import node
 from google.genai import types
 from typing import Any
 
 AGENT_MODEL = "gemini-3.1-flash-lite"
 logger = logging.getLogger(__name__)
+CONFIDENCE_THRESHOLD = 0.95
 
-position_name_capture = Agent(
-    name="position_name_capture",
-    model=AGENT_MODEL,
-    instruction="""Your only task is to retrieve the a position (i.e role) name 
-    from the end-user.
 
-    If the job position is provided answer with the text message: "True"
-    """,
-    output_schema=str,
-    output_key="job_position",
-)
+@node
+def check_confidence(node_input: Any):
+    if node_input["confidence"] >= CONFIDENCE_THRESHOLD:
+        return Event(
+            output=node_input,
+            actions=EventActions(
+                route="accept",
+                state_delta={
+                    "job_position": node_input["name"],
+                },
+            ),
+        )
+    return Event(
+        output=node_input,
+        actions=EventActions(route="retry"),
+    )
+
+
+@node
+async def request_role(ctx: Context, node_input: Any):
+    yield RequestInput(
+        interrupt_id=f"role_{ctx.attempt_count}",  # unique per iteration
+        message="Please provide a valid role name",
+        response_schema=str,
+    )
+
+
+@node
+def finish(node_input: dict):
+    yield Event(
+        content=types.Content(
+            role="model",
+            parts=[types.Part(text=f"Captured role: {node_input['name']}")],
+        )
+    )
+    yield Event(output=node_input)
+
 
 input_evaluator = Agent(
     name="input_evaluator",
@@ -31,19 +59,17 @@ input_evaluator = Agent(
 )
 
 
-@node(rerun_on_resume=False)
-async def get_user_approval(ctx: Context, node_input: Any):
-    """Yields a RequestInput to pause the workflow and wait for user input."""
-    yield RequestInput(message="Please provide a role name", response_schema=str)
-
-
-@node(rerun_on_resume=True)
-async def main_workflow(ctx: Context, node_input: str):
-    logger.info("before calling agent position_name_capture")
-    evaluation = await ctx.run_node(input_evaluator, node_input=node_input)
-    while evaluation["confidence"] < 0.95:
-        input = await ctx.run_node(get_user_approval)
-        evaluation = await ctx.run_node(input_evaluator, node_input=input)
-
-
-root_agent = Workflow(name="root_agent", edges=[("START", main_workflow)])
+root_agent = Workflow(
+    name="root_agent",
+    edges=[
+        ("START", input_evaluator, check_confidence),
+        (
+            check_confidence,
+            {
+                "accept": finish,
+                "retry": request_role,
+            },
+        ),
+        (request_role, input_evaluator),
+    ],
+)
