@@ -17,6 +17,8 @@ RETRY_CONFIG = types.GenerateContentConfig(
 
 logger = logging.getLogger(__name__)
 
+def normalize_role(raw: str):
+    return raw.title().strip()
 
 @node
 def check_confidence(node_input: Any):
