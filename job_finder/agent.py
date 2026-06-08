@@ -1,6 +1,7 @@
 import logging
 
 from .models import JobPosition
+from .tools import normalize_role as normalize_role
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
 from google.adk.workflow import node
@@ -16,6 +17,16 @@ RETRY_CONFIG = types.GenerateContentConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+@node
+def normalize_role_node(node_input: Any):
+    if isinstance(node_input, types.Content):
+        raw = node_input.parts[0].text if node_input.parts else ""
+    else:
+        raw = str(node_input) if node_input else ""
+    return normalize_role(raw) if raw else None
+
 
 @node
 def check_confidence(node_input: Any):
@@ -59,7 +70,7 @@ input_evaluator = Agent(
     name="input_evaluator",
     model=AGENT_MODEL,
     instruction="""You are an evaluator. Your only goal is to evaluate an input and determine 
-    if it is a valid job position name. Attach a confidence value""",
+    if it is a valid job position name. Attach a confidence value.""",
     output_schema=JobPosition,
     generate_content_config=RETRY_CONFIG,
 )
@@ -68,7 +79,7 @@ input_evaluator = Agent(
 root_agent = Workflow(
     name="root_agent",
     edges=[
-        ("START", input_evaluator, check_confidence),
+        ("START", normalize_role_node, input_evaluator, check_confidence),
         (
             check_confidence,
             {
@@ -76,6 +87,6 @@ root_agent = Workflow(
                 "retry": request_role,
             },
         ),
-        (request_role, input_evaluator),
+        (request_role, normalize_role_node),
     ],
 )
