@@ -5,16 +5,18 @@ from .tools import normalize_role, is_confident, extract_text
 
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
-from google.adk.tools import McpToolset
+from google.adk.tools import McpToolset, BaseTool
 from google.adk.tools.mcp_tool import StreamableHTTPConnectionParams
 from google.adk.workflow import node
 from google.genai import types
-from typing import Any
+from typing import Any, List
 
 AGENT_MODEL = "gemini-3.1-flash-lite"
 RETRY_CONFIG = types.GenerateContentConfig(
     http_options=types.HttpOptions(
-        retry_options=types.HttpRetryOptions(initial_delay=1, attempts=5),
+        retry_options=types.HttpRetryOptions(
+            initial_delay=2, attempts=10, exp_base=3.5
+        ),
     )
 )
 
@@ -78,6 +80,27 @@ def finish(node_input: dict):
     yield Event(output=node_input)
 
 
+@node
+async def crawl_node(ctx: Context, node_input: Any):
+    search = next(t for t in await serp_tools.get_tools() if t.name == "search")
+
+    posts = []
+    serp_params = {
+        "q": f"site:jobs.ashbyhq.com {ctx.state['job_position']}",
+        "engine": "duckduckgo",
+    }
+    while len(posts) < 35:
+        result = await search.run_async(
+            args={"params": serp_params, "mode": "compact"},   # <- nested under "params"
+            tool_context=ctx,
+        )
+        logger.info(f"Results: {result}")
+        posts.append(result)
+
+    yield Event(output=JobPostList(posts=posts[:35]))
+    
+
+
 input_evaluator = Agent(
     name="input_evaluator",
     model=AGENT_MODEL,
@@ -87,13 +110,6 @@ input_evaluator = Agent(
     generate_content_config=RETRY_CONFIG,
 )
 
-
-crawl_agent = Agent(
-    name="crawl_agent",
-    model=AGENT_MODEL,
-    instruction="""Run the following query in Google: `site:jobs.ashbyhq.com {job_position}`.""",
-    tools=[serp_tools],
-)
 
 formatter_agent = Agent(
     name="formatter_agent",
@@ -123,7 +139,7 @@ root_agent = Workflow(
         (
             check_confidence,
             {
-                "accept": crawl_agent,
+                "accept": crawl_node,
                 "retry": request_role,
             },
         ),
@@ -131,6 +147,5 @@ root_agent = Workflow(
             request_role,
             normalize_role_node,
         ),
-        (crawl_agent, formatter_agent),
     ],
 )
