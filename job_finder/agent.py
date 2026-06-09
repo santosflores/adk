@@ -1,9 +1,12 @@
 import logging
 
-from .models import JobPosition
+from .models import JobPosition, JobPostList
 from .tools import normalize_role, is_confident, extract_text
+
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
+from google.adk.tools import McpToolset
+from google.adk.tools.mcp_tool import StreamableHTTPConnectionParams
 from google.adk.workflow import node
 from google.genai import types
 from typing import Any
@@ -16,6 +19,11 @@ RETRY_CONFIG = types.GenerateContentConfig(
 )
 
 logger = logging.getLogger(__name__)
+serp_tools = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://mcp.serpapi.com/9fe5b2435864e377177514a474d1390dbc9dc6ed7ae9d9cfb72e97ffa80eff80/mcp",
+    ),
+)
 
 
 @node
@@ -80,6 +88,20 @@ input_evaluator = Agent(
 )
 
 
+crawl_agent = Agent(
+    name="crawl_agent",
+    model=AGENT_MODEL,
+    instruction="""Run the following query in Google: `site:jobs.ashbyhq.com {job_position}`.""",
+    tools=[serp_tools],
+)
+
+formatter_agent = Agent(
+    name="formatter_agent",
+    model=AGENT_MODEL,
+    instruction="""Use the retrieved information to create a list of objects""",
+    output_schema=JobPostList,
+)
+
 root_agent = Workflow(
     name="root_agent",
     edges=[
@@ -101,7 +123,7 @@ root_agent = Workflow(
         (
             check_confidence,
             {
-                "accept": finish,
+                "accept": crawl_agent,
                 "retry": request_role,
             },
         ),
@@ -109,5 +131,6 @@ root_agent = Workflow(
             request_role,
             normalize_role_node,
         ),
+        (crawl_agent, formatter_agent),
     ],
 )

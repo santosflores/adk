@@ -1,1 +1,1 @@
-from .position import JobPosition
+from .position import JobPosition, JobPostList
