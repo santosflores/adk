@@ -1,7 +1,7 @@
 import logging
 
 from .models import JobPosition
-from .tools import normalize_role, is_confident
+from .tools import normalize_role, is_confident, extract_text
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
 from google.adk.workflow import node
@@ -20,11 +20,16 @@ logger = logging.getLogger(__name__)
 
 @node
 def normalize_role_node(node_input: Any):
-    if isinstance(node_input, types.Content):
-        raw = node_input.parts[0].text if node_input.parts else ""
-    else:
-        raw = str(node_input) if node_input else ""
-    return normalize_role(raw) if raw else None
+    raw = extract_text(node_input)
+    if not raw:
+        return Event(
+            output=node_input,
+            actions=EventActions(route="invalid"),
+        )
+    return Event(
+        output=normalize_role(raw),
+        actions=EventActions(route="valid"),
+    )
 
 
 @node
@@ -78,15 +83,31 @@ input_evaluator = Agent(
 root_agent = Workflow(
     name="root_agent",
     edges=[
-        ("START", normalize_role_node, input_evaluator, check_confidence),
+        (
+            "START",
+            normalize_role_node,
+        ),
+        (
+            normalize_role_node,
+            {
+                "valid": input_evaluator,
+                "invalid": request_role,
+            },
+        ),
+        (
+            input_evaluator,
+            check_confidence,
+        ),
         (
             check_confidence,
             {
                 "accept": finish,
                 "retry": request_role,
-                "__DEFAULT__": input_evaluator
             },
         ),
-        (request_role, normalize_role_node),
+        (
+            request_role,
+            normalize_role_node,
+        ),
     ],
 )
