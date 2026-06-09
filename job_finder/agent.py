@@ -82,6 +82,7 @@ def finish(node_input: dict):
 
 @node
 async def crawl_node(ctx: Context, node_input: Any):
+    logger.info(f"node_input: {node_input}")
     search = next(t for t in await serp_tools.get_tools() if t.name == "search")
 
     posts = []
@@ -94,10 +95,11 @@ async def crawl_node(ctx: Context, node_input: Any):
             args={"params": serp_params, "mode": "compact"},   # <- nested under "params"
             tool_context=ctx,
         )
-        logger.info(f"Results: {result}")
+        logger.info(result)
         posts.append(result)
+        
 
-    yield Event(output=JobPostList(posts=posts[:35]))
+    # yield Event(output=JobPostList(posts=posts[:35]))
     
 
 
