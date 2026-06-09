@@ -1,11 +1,11 @@
 import logging
 
 from .models import JobPosition, JobPostList
-from .tools import normalize_role, is_confident, extract_text
+from .tools import normalize_role, is_confident, extract_text, parse_page
 
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
-from google.adk.tools import McpToolset, BaseTool
+from google.adk.tools import McpToolset
 from google.adk.tools.mcp_tool import StreamableHTTPConnectionParams
 from google.adk.workflow import node
 from google.genai import types
@@ -95,6 +95,7 @@ async def crawl_node(ctx: Context, node_input: Any):
             args={"params": serp_params, "mode": "compact"},   # <- nested under "params"
             tool_context=ctx,
         )
+        
         logger.info(result)
         posts.append(result)
         

@@ -21,3 +21,22 @@ def extract_text(node_input: Any) -> str | None:
     else:
         raw = node_input if node_input else ""
     return raw if raw else None
+
+
+def parse_page(node_input: list[dict]) -> list[dict]:
+    posts = []
+    for job_post in node_input:
+        parts = job_post["link"].split("/")
+        if len(parts) < 5 or not parts[4]:
+            continue
+        job_post_id = parts[4]
+        url = "/".join(parts[:5])
+        posts.append(
+            {
+                "title": job_post["title"],
+                "url": url,
+                "snippet": job_post["snippet"],
+                "id": job_post_id,
+            }
+        )
+    return posts

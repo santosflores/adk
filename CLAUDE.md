@@ -50,6 +50,27 @@ Red → Green → Refactor. Do **not** implement for them unless asked.
 
 ## Changelog — current state
 
+### 2026-06-09
+
+- **TDD'd `parse_page(node_input: list[dict]) -> list[dict]`** in `tools/main.py`: takes SerpAPI
+  `organic_results` entries, returns `{title, url, snippet, id}` dicts. Suite is now **20 passing
+  tests** (5 new parametrized cases in `tools/test_parse_page.py`). Decisions baked into tests:
+  - `id` extracted from the Ashby URL path (`parts[4]`), kept as `str` — pydantic coerces to
+    `UUID` when the caller builds `JobPost`.
+  - `url` normalized to `.../{company}/{uuid}` — `/application` suffix and query strings dropped.
+  - Entries without a UUID segment (company landing pages, e.g. `.../Abridge`,
+    `.../PAR%20Technology/`) are **skipped**; one guard covers both failure modes (IndexError on
+    short path, empty string on trailing slash).
+  - Query-string variant (`...?source=LinkedIn`) covered by a **pinning test** — passes by
+    construction, locks the contract against future URL-handling refactors.
+- **Design decisions made:** envelope-digging (`result['content'][0]['text']` + `json.loads`)
+  stays in `crawl_node` as adapter glue; `date_added` is stamped by the caller, not `parse_page`
+  (keeps it pure/deterministic); **dedup belongs at the aggregation level** (the crawl loop
+  re-fetches the same search, so duplicates cross page boundaries), not in `parse_page`.
+- **Next candidate reps:** pure `dedupe_posts(posts)` keyed on `id`; wire `parse_page` into
+  `crawl_node` (replace the raw `posts.append(result)` accumulation); end-to-end workflow
+  integration test; threshold dependency-injection (`is_confident(confidence, threshold=...)`).
+
 ### 2026-06-08
 
 - **`job_finder/`** is the active TDD project. Structure:
