@@ -14,6 +14,7 @@ class JobPost(BaseModel):
     domain_source: str    
     date_added: datetime.datetime
     job_position: str
+    snippet: str
     
 class JobPostList(BaseModel):
     posts: list[JobPost]
