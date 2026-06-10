@@ -1,6 +1,6 @@
 import pytest
 
-from .main import parse_page, extract_ashby_link
+from .main import parse_page, extract_ashby_link, extract_greenhouse_link
 from typing import Any
 
 
@@ -72,5 +72,84 @@ from typing import Any
         ),
     ],
 )
-def test_parse_page_ashby_happy_path(node_input: Any, expected: dict):
+def test_parse_page_ashby(node_input: Any, expected: dict):
     assert parse_page(node_input, extract_ashby_link) == expected
+
+
+@pytest.mark.parametrize(
+    "node_input, expected",
+    [
+        ([], []),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "link": "https://boards.greenhouse.io/stripe",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [],
+        ),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "link": "https://boards.greenhouse.io/stripe/jobs/4567890123",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [
+                {
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "url": "https://boards.greenhouse.io/stripe/jobs/4567890123",
+                    "snippet": "...",
+                    "id": "4567890123",
+                }
+            ],
+        ),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "link": "https://boards.greenhouse.io/stripe/jobs/4567890123/",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [
+                {
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "url": "https://boards.greenhouse.io/stripe/jobs/4567890123",
+                    "snippet": "...",
+                    "id": "4567890123",
+                }
+            ],
+        ),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "link": "https://boards.greenhouse.io/stripe/jobs/4567890123?gh_src=abc123",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [
+                {
+                    "title": "Partner Solutions Engineer @ Notion",
+                    "url": "https://boards.greenhouse.io/stripe/jobs/4567890123",
+                    "snippet": "...",
+                    "id": "4567890123",
+                }
+            ],
+        )
+    ],
+)
+def test_parse_page_greenhouse(node_input: Any, expected: dict):
+    assert parse_page(node_input, extract_greenhouse_link) == expected

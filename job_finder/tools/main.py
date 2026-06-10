@@ -31,6 +31,18 @@ def extract_ashby_link(link: str) -> tuple[str, str] | None:
     return (job_post_id, "/".join(parts[:5]))
 
 
+def extract_greenhouse_link(link: str) -> tuple[str, str] | None:
+    parts = link.split("/")
+
+    if len(parts) < 6:
+        return None
+    job_post_id = parts[5].split("?")[0]
+    if not job_post_id.isdigit():
+        return None
+
+    return (job_post_id, "/".join(parts[:5]) + "/" + job_post_id)
+
+
 def parse_page(
     organic_results: list[dict],
     extract_link: Callable[[str], tuple[str, str] | None],
