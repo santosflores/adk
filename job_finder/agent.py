@@ -1,3 +1,4 @@
+import json
 import logging
 
 from .models import JobPosition, JobPostList
@@ -9,7 +10,7 @@ from google.adk.tools import McpToolset
 from google.adk.tools.mcp_tool import StreamableHTTPConnectionParams
 from google.adk.workflow import node
 from google.genai import types
-from typing import Any, List
+from typing import Any
 
 AGENT_MODEL = "gemini-3.1-flash-lite"
 RETRY_CONFIG = types.GenerateContentConfig(
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 serp_tools = McpToolset(
     connection_params=StreamableHTTPConnectionParams(
         url="https://mcp.serpapi.com/9fe5b2435864e377177514a474d1390dbc9dc6ed7ae9d9cfb72e97ffa80eff80/mcp",
+        timeout=120,
     ),
 )
 
@@ -82,26 +84,35 @@ def finish(node_input: dict):
 
 @node
 async def crawl_node(ctx: Context, node_input: Any):
-    logger.info(f"node_input: {node_input}")
     search = next(t for t in await serp_tools.get_tools() if t.name == "search")
-
     posts = []
+
     serp_params = {
         "q": f"site:jobs.ashbyhq.com {ctx.state['job_position']}",
         "engine": "duckduckgo",
+        "m": 20,
     }
+    result = await search.run_async(
+        args={"params": serp_params, "mode": "complete"},
+        tool_context=ctx,
+    )
+    organic_results = json.loads(result["content"][0]["text"])["organic_results"]
+    posts.extend((parse_page(organic_results)))
     while len(posts) < 35:
+        serp_params["start"] = len(posts) + 1
         result = await search.run_async(
-            args={"params": serp_params, "mode": "compact"},   # <- nested under "params"
+            args={"params": serp_params, "mode": "complete"},
             tool_context=ctx,
         )
-        
-        logger.info(result)
-        posts.append(result)
-        
-
-    # yield Event(output=JobPostList(posts=posts[:35]))
-    
+        organic_results = json.loads(result["content"][0]["text"])["organic_results"]
+        yield Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text=f"```json\n{json.dumps(posts, indent=2)}\n```")],
+            )
+        )
+        posts.extend(parse_page(organic_results))
+    yield Event(output=posts)
 
 
 input_evaluator = Agent(
