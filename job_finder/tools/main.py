@@ -23,9 +23,9 @@ def extract_text(node_input: Any) -> str | None:
     return raw if raw else None
 
 
-def parse_page(node_input: list[dict]) -> list[dict]:
+def parse_page(organic_results: list[dict]) -> list[dict]:
     posts = []
-    for job_post in node_input:
+    for job_post in organic_results:
         parts = job_post["link"].split("/")
         if len(parts) < 5 or not parts[4]:
             continue
