@@ -27,7 +27,7 @@ def extract_ashby_link(link: str) -> tuple[str, str] | None:
     parts = link.split("/")
     if len(parts) < 5 or not parts[4]:
         return None
-    job_post_id = parts[4]
+    job_post_id = parts[4].split("?")[0]
     return (job_post_id, "/".join(parts[:5]))
 
 
