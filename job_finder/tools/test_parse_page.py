@@ -1,6 +1,6 @@
 import pytest
 
-from .main import parse_page
+from .main import parse_page, extract_ashby_link
 from typing import Any
 
 
@@ -72,5 +72,5 @@ from typing import Any
         ),
     ],
 )
-def test_parse_page_happy_path(node_input: Any, expected: dict):
-    assert parse_page(node_input) == expected
+def test_parse_page_ashby_happy_path(node_input: Any, expected: dict):
+    assert parse_page(node_input, extract_ashby_link) == expected

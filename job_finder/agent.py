@@ -2,7 +2,13 @@ import json
 import logging
 
 from .models import JobPosition, JobPostList
-from .tools import normalize_role, is_confident, extract_text, parse_page
+from .tools import (
+    normalize_role,
+    is_confident,
+    extract_text,
+    parse_page,
+    extract_ashby_link,
+)
 
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
@@ -92,14 +98,9 @@ async def crawl_node(ctx: Context, node_input: Any):
         "engine": "duckduckgo",
         "m": 20,
     }
-    result = await search.run_async(
-        args={"params": serp_params, "mode": "complete"},
-        tool_context=ctx,
-    )
-    organic_results = json.loads(result["content"][0]["text"])["organic_results"]
-    posts.extend((parse_page(organic_results)))
-    while len(posts) < 35:
-        serp_params["start"] = len(posts) + 1
+    while True:
+        if len(posts) > 0:
+            serp_params["start"] = len(posts) + 1
         result = await search.run_async(
             args={"params": serp_params, "mode": "complete"},
             tool_context=ctx,
@@ -108,10 +109,19 @@ async def crawl_node(ctx: Context, node_input: Any):
         yield Event(
             content=types.Content(
                 role="model",
-                parts=[types.Part(text=f"```json\n{json.dumps(posts, indent=2)}\n```")],
+                parts=[
+                    types.Part(
+                        text=f"```json\n{json.dumps(organic_results, indent=2)}\n```"
+                    )
+                ],
             )
         )
-        posts.extend(parse_page(organic_results))
+        before = len(posts)
+        posts.extend(parse_page(organic_results, extract_ashby_link))
+        if len(posts) >= 35:
+            break
+        if len(posts) == before:
+            break
     yield Event(output=posts)
 
 
