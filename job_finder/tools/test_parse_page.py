@@ -1,6 +1,6 @@
 import pytest
 
-from .main import parse_page, extract_ashby_link, extract_greenhouse_link
+from .main import parse_page, extract_ashby_link, extract_greenhouse_link, extract_lever_link
 from typing import Any
 
 
@@ -153,3 +153,81 @@ def test_parse_page_ashby(node_input: Any, expected: dict):
 )
 def test_parse_page_greenhouse(node_input: Any, expected: dict):
     assert parse_page(node_input, extract_greenhouse_link) == expected
+
+@pytest.mark.parametrize(
+    "node_input, expected",
+    [
+        ([], []),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Netflix",
+                    "link": "https://jobs.lever.co/netflix",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [],
+        ),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Netflix",
+                    "link": "https://jobs.lever.co/netflix/f7b2a1c3",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [
+                {
+                    "title": "Netflix",
+                    "url": "https://jobs.lever.co/netflix/f7b2a1c3",
+                    "snippet": "...",
+                    "id": "f7b2a1c3",
+                }
+            ],
+        ),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Netflix",
+                    "link": "https://jobs.lever.co/netflix/f7b2a1c3/",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [
+                {
+                    "title": "Netflix",
+                    "url": "https://jobs.lever.co/netflix/f7b2a1c3",
+                    "snippet": "...",
+                    "id": "f7b2a1c3",
+                }
+            ],
+        ),
+        (
+            [
+                {
+                    "position": 1,
+                    "title": "Netflix",
+                    "link": "https://jobs.lever.co/netflix/f7b2a1c3?lever-origin=applicant-tracking",
+                    "snippet": "...",
+                    "favicon": "...",
+                }
+            ],
+            [
+                {
+                    "title": "Netflix",
+                    "url": "https://jobs.lever.co/netflix/f7b2a1c3",
+                    "snippet": "...",
+                    "id": "f7b2a1c3",
+                }
+            ],
+        )
+    ],
+)
+def test_parse_page_lever(node_input: Any, expected: dict):
+    assert parse_page(node_input, extract_lever_link) == expected
