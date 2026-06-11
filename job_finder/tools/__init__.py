@@ -5,4 +5,5 @@ from .main import (
     parse_page,
     extract_ashby_link,
     extract_greenhouse_link,
+    dedupe_posts
 )

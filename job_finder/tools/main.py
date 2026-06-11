@@ -69,3 +69,11 @@ def parse_page(
             }
         )
     return posts
+
+
+def dedupe_posts(posts: list[dict]) -> list[dict]:
+    deduped = {}
+    for post in posts:
+        if post["id"] not in deduped:
+            deduped[post["id"]] = post
+    return list(deduped.values())
