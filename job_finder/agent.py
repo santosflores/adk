@@ -8,6 +8,9 @@ from .tools import (
     extract_text,
     parse_page,
     extract_ashby_link,
+    extract_greenhouse_link,
+    extract_lever_link,
+    dedupe_posts,
 )
 
 from google.adk import Agent, Context, Workflow, Event
@@ -26,6 +29,11 @@ RETRY_CONFIG = types.GenerateContentConfig(
         ),
     )
 )
+ATS_EXTRACTORS = {
+    "jobs.ashbyhq.com": extract_ashby_link,
+    "boards.greenhouse.io": extract_greenhouse_link,
+    "jobs.lever.co": extract_lever_link,
+}
 
 logger = logging.getLogger(__name__)
 serp_tools = McpToolset(
@@ -69,7 +77,7 @@ def check_confidence(node_input: Any):
 
 
 @node
-async def request_role(ctx: Context, node_input: Any):
+async def request_role(ctx: Context):
     yield RequestInput(
         interrupt_id=f"role_{ctx.attempt_count}",  # unique per iteration
         message="Please provide a valid role name",
@@ -78,23 +86,26 @@ async def request_role(ctx: Context, node_input: Any):
 
 
 @node
-def finish(node_input: dict):
-    yield Event(
-        content=types.Content(
-            role="model",
-            parts=[types.Part(text=f"Captured role: {node_input['name']}")],
-        )
-    )
-    yield Event(output=node_input)
+def get_ats_domains():
+    return list(ATS_EXTRACTORS.keys())
 
 
 @node
+def collect_posts(node_input: list[list[dict]]):
+    posts = [p for worker in node_input for p in worker]
+    logger.info(f"len(posts) before deduped: {len(posts)}")
+    posts = dedupe_posts(posts)
+    logger.info(f"len(posts) after deduped: {len(posts)}")
+    yield Event(output=posts)
+
+
+@node(parallel_worker=True)
 async def crawl_node(ctx: Context, node_input: Any):
     search = next(t for t in await serp_tools.get_tools() if t.name == "search")
     posts = []
 
     serp_params = {
-        "q": f"site:jobs.ashbyhq.com {ctx.state['job_position']}",
+        "q": f"site:{node_input} {ctx.state['job_position']}",
         "engine": "duckduckgo",
         "m": 20,
     }
@@ -102,22 +113,12 @@ async def crawl_node(ctx: Context, node_input: Any):
         if len(posts) > 0:
             serp_params["start"] = len(posts) + 1
         result = await search.run_async(
-            args={"params": serp_params, "mode": "complete"},
+            args={"params": serp_params, "mode": "compact"},
             tool_context=ctx,
         )
         organic_results = json.loads(result["content"][0]["text"])["organic_results"]
-        yield Event(
-            content=types.Content(
-                role="model",
-                parts=[
-                    types.Part(
-                        text=f"```json\n{json.dumps(organic_results, indent=2)}\n```"
-                    )
-                ],
-            )
-        )
         before = len(posts)
-        posts.extend(parse_page(organic_results, extract_ashby_link))
+        posts.extend(parse_page(organic_results, ATS_EXTRACTORS[node_input]))
         if len(posts) >= 35:
             break
         if len(posts) == before:
@@ -163,7 +164,7 @@ root_agent = Workflow(
         (
             check_confidence,
             {
-                "accept": crawl_node,
+                "accept": get_ats_domains,
                 "retry": request_role,
             },
         ),
@@ -171,5 +172,7 @@ root_agent = Workflow(
             request_role,
             normalize_role_node,
         ),
+        (get_ats_domains, crawl_node),
+        (crawl_node, collect_posts),
     ],
 )
