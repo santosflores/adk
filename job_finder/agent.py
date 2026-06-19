@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from .models import JobPosition, JobPostList
 from .tools import (
@@ -21,6 +22,10 @@ from google.adk.workflow import node
 from google.genai import types
 from typing import Any
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 AGENT_MODEL = "gemini-3.1-flash-lite"
 RETRY_CONFIG = types.GenerateContentConfig(
     http_options=types.HttpOptions(
@@ -34,11 +39,13 @@ ATS_EXTRACTORS = {
     "boards.greenhouse.io": extract_greenhouse_link,
     "jobs.lever.co": extract_lever_link,
 }
+SERP_API_KEY = os.getenv("SERP_API_KEY")
 
 logger = logging.getLogger(__name__)
+
 serp_tools = McpToolset(
     connection_params=StreamableHTTPConnectionParams(
-        url="https://mcp.serpapi.com/9fe5b2435864e377177514a474d1390dbc9dc6ed7ae9d9cfb72e97ffa80eff80/mcp",
+        url=f"https://mcp.serpapi.com/{SERP_API_KEY}/mcp",
         timeout=120,
     ),
 )
@@ -123,7 +130,7 @@ async def crawl_node(ctx: Context, node_input: Any):
             break
         if len(posts) == before:
             break
-    yield Event(output=posts)
+    return posts
 
 
 input_evaluator = Agent(

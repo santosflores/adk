@@ -41,6 +41,15 @@ being used as a hands-on **TDD tutoring** project (see the changelog and the
 - Edge tuples are **chains**: `("START", a, b, c)` means `START → a → b → c`. Split a chain into separate edges when a middle node needs to route conditionally.
 - A node returning `None` emits **no event** → downstream never fires (silent dead-end). Return `""` or an `Event(route=...)` instead if you want flow to continue.
 - Routing nodes want a `__DEFAULT__` edge or ADK shows `[NO DEFAULT]`.
+- **"cancelling N leftover tasks" after a ParallelWorker run is cosmetic** (N == worker count).
+  `DynamicNodeScheduler` never prunes completed runs from its registry, so workflow cleanup
+  counts every finished worker task as "leftover"; the actual `cancel()` is guarded by
+  `task.done()` and no-ops. Verified against `_dynamic_node_scheduler.py` /`_workflow.py:848`
+  in google-adk 2.2.0. Don't silence the logger — the same line fires for *real* stuck tasks.
+  **Upstream status (checked 2026-06-10):** code on google/adk-python `main` is identical
+  (`get_dynamic_tasks()` has no `task.done()` filter; `_record_result` never prunes), and no
+  issue/PR reports it ("leftover tasks", "ParallelWorker" searches come up empty). Not yet
+  filed — the drafted report lives in `notes/adk-issue-leftover-tasks.md`.
 
 ## Working style
 
@@ -83,15 +92,32 @@ Red → Green → Refactor. Do **not** implement for them unless asked.
   vacuously); pytest marks exceptions inside the code under test as `FAILED` (with traceback),
   reserving `ERROR` for fixture/setup breakage; the type checker caught two runtime crashes
   pre-test ("None is not iterable" on unguarded unpack, "possibly unbound" after a refactor).
-- **In flight: `dedupe_posts(posts) -> list[dict]`** — decisions locked, tests not yet written:
-  keyed on `id`, **first copy wins** (no reason to prefer later), implemented via `dict` so
-  insertion order is preserved (pinned by tests but not promised), **per-board dedup only**
-  (same job cross-posted on two ATSes has two ids — out of scope by decision). Test cases agreed:
-  empty, no-dups passthrough, same-id-different-snippet keeps first, non-adjacent duplicates.
-- **Next after dedupe:** wire the fan-out in `agent.py` — splitter node (domain list),
-  `crawl_node` as `parallel_worker=True` taking the domain from `node_input` (replacing the
-  hardcoded `site:jobs.ashbyhq.com`) and dispatching to the right extractor, collector node
-  calling `dedupe_posts`. Glue verified via `adk web`, per convention.
+- **TDD'd `dedupe_posts(posts) -> list[dict]`** (suite now **34 passing**): keyed on `id`,
+  **first copy wins** (no reason to prefer later), `dict` + insert-if-absent so insertion order
+  is preserved (pinned by tests but not promised), **per-board dedup only** (same job
+  cross-posted on two ATSes has two ids — out of scope by decision). Four cases in
+  `tools/test_dedupe_posts.py`: empty, no-dups passthrough, adjacent dup keeps first snippet,
+  non-adjacent dup (guards against neighbors-only implementations).
+- **Fan-out wired and verified** (session goal complete). In `agent.py`:
+  - `ATS_EXTRACTORS` dispatch table (domain → extractor) lives in **`agent.py`, not tools/** —
+    conscious call: it's wiring, and wiring lives with the graph (cost: not unit-testable from
+    `tools/`, which is fine for a 3-entry dict).
+  - `get_ats_domains` splitter returns `list(ATS_EXTRACTORS.keys())` — map drives the splitter,
+    so adding an ATS = one dict entry, no other edits.
+  - `crawl_node` is `@node(parallel_worker=True)`: domain arrives as `node_input` (one worker
+    per domain), `job_position` from shared state, query is `site:{node_input} ...`, extractor
+    via `ATS_EXTRACTORS[node_input]`. SerpAPI `mode="compact"` is deliberate (completes reliably).
+  - `collect_posts` collector closes the diamond: flattens the workers' list-of-lists, calls
+    `dedupe_posts`, emits the result. Edges: `check_confidence --accept--> get_ats_domains →
+    crawl_node → collect_posts`.
+  - **Verified in `adk web` 2026-06-10:** all 3 workers (`crawl_node@0/1/2`) delivered;
+    **133 posts flattened → 116 after dedup** — first real measurement of the pagination-overlap
+    duplication theorized on 06-09 (~13% dups). The "cancelling 3 leftover tasks" warning at
+    workflow end was investigated and confirmed cosmetic — see the ADK gotchas section.
+- **Next candidate reps:** wire `formatter_agent` after `collect_posts` (it's been orphaned in
+  `agent.py` since before today and the collector now produces its natural input); end-to-end
+  workflow integration test; the Lever clean-before-check reorder (open item above); threshold
+  dependency-injection (`is_confident(confidence, threshold=...)`).
 
 ### 2026-06-09
 
