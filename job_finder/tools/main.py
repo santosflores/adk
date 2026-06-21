@@ -3,6 +3,7 @@
 from typing import Any, Callable
 
 CONFIDENCE_THRESHOLD = 0.95
+EXPORT_COLUMNS = ["id", "title", "url", "snippet"]
 
 
 def normalize_role(raw: str) -> str:
@@ -77,3 +78,11 @@ def dedupe_posts(posts: list[dict]) -> list[dict]:
         if post["id"] not in deduped:
             deduped[post["id"]] = post
     return list(deduped.values())
+
+
+def posts_to_rows(posts: list[dict]) -> list[list]:
+    rows = [EXPORT_COLUMNS]
+    for p in posts:
+        row = [p.get(e, "") for e in EXPORT_COLUMNS]
+        rows.append(row)
+    return rows

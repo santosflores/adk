@@ -23,6 +23,7 @@ Export the deduped job-post results to a Google Sheets workbook at the end of th
 ## Components
 
 ### Pure (TDD'd) — `posts_to_rows(posts) -> list[list]` in `tools/main.py`
+
 Turns the `list[dict]` from `collect_posts` (`{title, url, snippet, id}`) into a header
 row + one row per post — the `list[list]` shape `gspread.Worksheet.update()` accepts.
 No `google.*` / `gspread` imports (keeps the pure tier fast & warning-free).
@@ -31,6 +32,7 @@ Test decisions to establish during the rep: column order, header labels, empty-l
 behavior (header-only vs empty), missing-key handling.
 
 ### Glue (verified in `adk web`) — `export_node` in `agent.py`
+
 `@node` after `collect_posts`. Authorizes gspread from the service-account JSON, opens
 the workbook by key, creates a new worksheet named `{date} {job_position}`, and writes
 `posts_to_rows(posts)`. Wiring lives with the graph (like `ATS_EXTRACTORS`); not
