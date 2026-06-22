@@ -1,3 +1,4 @@
+import gspread
 import json
 import logging
 import os
@@ -12,8 +13,9 @@ from .tools import (
     extract_greenhouse_link,
     extract_lever_link,
     dedupe_posts,
+    posts_to_rows,
 )
-
+from datetime import datetime
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
 from google.adk.tools import McpToolset
@@ -40,6 +42,7 @@ ATS_EXTRACTORS = {
     "jobs.lever.co": extract_lever_link,
 }
 SERP_API_KEY = os.getenv("SERP_API_KEY")
+GOOGLE_SA_KEY = os.getenv("GOOGLE_SA_KEY_PATH")
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +107,22 @@ def collect_posts(node_input: list[list[dict]]):
     posts = dedupe_posts(posts)
     logger.info(f"len(posts) after deduped: {len(posts)}")
     yield Event(output=posts)
+
+
+@node
+def export_node(ctx: Context, node_input: list[dict]):
+    spreadsheet_id = os.getenv("SHEETS_WORKBOOK_KEY")
+    if not spreadsheet_id or not GOOGLE_SA_KEY:
+        yield Event(output={"error": "missing configuration"})
+    else:
+        key_path = os.path.join(os.path.dirname(__file__), GOOGLE_SA_KEY)
+        gc = gspread.service_account(filename=key_path)
+        sh = gc.open_by_key(spreadsheet_id)
+        values = posts_to_rows(node_input)
+        tab = f"{datetime.now():%Y-%m-%d %H-%M} {ctx.state['job_position']}"
+        ws = sh.add_worksheet(title=tab, rows=len(values) + 10, cols=len(values[0]))
+        ws.update(values)
+        yield Event(output={"worksheet": tab, "url": sh.url, "count": len(node_input)})
 
 
 @node(parallel_worker=True)
@@ -181,5 +200,6 @@ root_agent = Workflow(
         ),
         (get_ats_domains, crawl_node),
         (crawl_node, collect_posts),
+        (collect_posts, export_node),
     ],
 )

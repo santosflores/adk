@@ -6,5 +6,6 @@ from .main import (
     extract_ashby_link,
     extract_greenhouse_link,
     extract_lever_link,
-    dedupe_posts
+    dedupe_posts,
+    posts_to_rows
 )
