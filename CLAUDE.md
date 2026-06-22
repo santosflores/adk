@@ -60,6 +60,42 @@ Red → Green → Refactor. Do **not** implement for them unless asked.
 
 ## Changelog — current state
 
+### 2026-06-22
+
+- **Session goal: export results to a Google Sheets workbook** (complete). Built via the
+  established pure/glue split.
+- **TDD'd `posts_to_rows(posts) -> list[list]`** in `tools/main.py` (suite now **38 passing**,
+  4 new cases in `tools/test_posts_to_rows.py`): turns the deduped `collect_posts` dicts
+  (`{title, url, snippet, id}`) into the `list[list]` shape `gspread.Worksheet.update()` wants
+  — header row + one row per post. Decisions baked into tests: `EXPORT_COLUMNS` is the **single
+  source of truth** for column order *and* header labels (each row built by walking it, so
+  reordering the constant reorders the data automatically); empty list → **header-only** (a tab
+  with columns, no rows); missing key → **per-cell blank** via `p.get(e, "")` (row survives, one
+  field empty — degrades per-cell, not per-row). **No `google.*` imports** → stays in the fast
+  tier. Chose `list[list]` over CSV strings deliberately: gspread escapes cells itself, so a
+  comma inside a snippet stays in one column.
+- **Wired `export_node`** (glue, in `agent.py`, verified in `adk web` — not unit-tested per house
+  rule). After `collect_posts`: resolves the SA key path against `__file__` (the `.env` value
+  `GOOGLE_SA_KEY_PATH=sa.json` is relative; `adk web` runs from workspace root, so a bare
+  relative path wouldn't resolve), authorizes gspread, opens the workbook by key
+  (`SHEETS_WORKBOOK_KEY`), creates a **new tab per run** named `{YYYY-MM-DD HH-MM} {job_position}`
+  (colon-free — avoids same-day collisions and any sheet-title validation issues), writes
+  `posts_to_rows(...)`, and yields a result Event. New edge: `(collect_posts, export_node)`.
+  Both config-missing guards `yield` a visible **error Event** (not `return`/`None` — that's a
+  silent dead-end in a generator node, per the ADK gotchas).
+- **Auth pivot:** original plan was service-account + key, but the org enforced
+  `iam.disableServiceAccountKeyCreation`. User is the org owner → overrode the constraint at the
+  **project** level (not org-wide) to keep the guardrail elsewhere. Key is `job_finder/sa.json`,
+  **git-ignored** along with `.env` (root `.gitignore`).
+- **Deps:** added `gspread==6.2.1` (+ `google-auth-oauthlib`, `oauthlib`, `requests-oauthlib`) to
+  `requirements.txt` — real runtime deps (unlike pytest, dev-only).
+- **First live run:** results landed in a new worksheet tab. Spec at
+  `docs/superpowers/specs/2026-06-19-google-sheets-export-design.md`.
+- **Next candidate reps:** coerce non-str cells in `posts_to_rows` (UUID `id`) when a test demands
+  it; the orphaned `formatter_agent` is now fully bypassed (`export_node` is terminal) — remove or
+  repurpose it; the Lever clean-before-check reorder (still open from 06-10); end-to-end workflow
+  integration test.
+
 ### 2026-06-10
 
 - **Session goal: fan out `crawl_node` into 3 parallel crawlers** — same `job_position`, one per
