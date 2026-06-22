@@ -3,7 +3,7 @@ import json
 import logging
 import os
 
-from .models import JobPosition, JobPostList
+from .models import JobPosition
 from .tools import (
     normalize_role,
     is_confident,
@@ -159,14 +159,6 @@ input_evaluator = Agent(
     if it is a valid job position name. Attach a confidence value.""",
     output_schema=JobPosition,
     generate_content_config=RETRY_CONFIG,
-)
-
-
-formatter_agent = Agent(
-    name="formatter_agent",
-    model=AGENT_MODEL,
-    instruction="""Use the retrieved information to create a list of objects""",
-    output_schema=JobPostList,
 )
 
 root_agent = Workflow(
