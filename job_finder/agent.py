@@ -103,9 +103,7 @@ def get_ats_domains():
 @node
 def collect_posts(node_input: list[list[dict]]):
     posts = [p for worker in node_input for p in worker]
-    logger.info(f"len(posts) before deduped: {len(posts)}")
     posts = dedupe_posts(posts)
-    logger.info(f"len(posts) after deduped: {len(posts)}")
     yield Event(output=posts)
 
 
