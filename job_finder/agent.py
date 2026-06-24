@@ -1,3 +1,4 @@
+import google.auth
 import gspread
 import json
 import logging
@@ -42,7 +43,6 @@ ATS_EXTRACTORS = {
     "jobs.lever.co": extract_lever_link,
 }
 SERP_API_KEY = os.getenv("SERP_API_KEY")
-GOOGLE_SA_KEY = os.getenv("GOOGLE_SA_KEY_PATH")
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +110,14 @@ def collect_posts(node_input: list[list[dict]]):
 @node
 def export_node(ctx: Context, node_input: list[dict]):
     spreadsheet_id = os.getenv("SHEETS_WORKBOOK_KEY")
-    if not spreadsheet_id or not GOOGLE_SA_KEY:
+    if not spreadsheet_id:
         yield Event(output={"error": "missing configuration"})
     else:
-        key_path = os.path.join(os.path.dirname(__file__), GOOGLE_SA_KEY)
-        gc = gspread.service_account(filename=key_path)
+        creds, _ = google.auth.default(scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ])
+        gc = gspread.authorize(creds)
         sh = gc.open_by_key(spreadsheet_id)
         values = posts_to_rows(node_input)
         tab = f"{datetime.now():%Y-%m-%d %H-%M} {ctx.state['job_position']}"

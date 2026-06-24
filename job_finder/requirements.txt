@@ -1,0 +1,6 @@
+google-adk[a2a, mcp]==2.2.0
+google-auth==2.53.0
+google-genai==2.8.0
+gspread==6.2.1
+pydantic==2.13.4
+python-dotenv==1.2.2
