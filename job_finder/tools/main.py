@@ -155,3 +155,7 @@ def posts_to_rows(posts: list[dict]) -> list[list]:
 def is_dead(http_code: int) -> bool:
     dead_codes = [404, 410, 0]
     return http_code in dead_codes or http_code >= 500
+
+
+def location_matches(location: str, target: str) -> bool:
+    return target.lower() in location.lower()
