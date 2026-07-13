@@ -124,10 +124,12 @@ def export_node(ctx: Context, node_input: list[dict]):
     if not spreadsheet_id:
         yield Event(output={"error": "missing configuration"})
     else:
-        creds, _ = google.auth.default(scopes=[
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ])
+        creds, _ = google.auth.default(
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive",
+            ]
+        )
         gc = gspread.authorize(creds)
         sh = gc.open_by_key(spreadsheet_id)
         values = posts_to_rows(node_input)
@@ -147,7 +149,6 @@ async def crawl_node(ctx: Context, node_input: Any):
         "engine": "duckduckgo",
         "m": 50,
         "kl": "us-en",
-        
     }
     while True:
         if len(posts) > 0:
@@ -159,7 +160,7 @@ async def crawl_node(ctx: Context, node_input: Any):
         organic_results = json.loads(result["content"][0]["text"])["organic_results"]
         before = len(posts)
         posts.extend(parse_page(organic_results, ATS_EXTRACTORS[node_input]))
-        if len(posts) >= 35:
+        if len(posts) >= 100:
             break
         if len(posts) == before:
             break

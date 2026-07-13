@@ -160,6 +160,7 @@ def is_dead(http_code: int) -> bool:
 def location_matches(location: str, target: str) -> bool:
     return target.lower() in location.lower()
 
+
 def extract_lever_fields(job: dict) -> tuple[str | None, bool]:
     """Map a Lever posting JSON to normalized ``(country, is_remote)``.
 
