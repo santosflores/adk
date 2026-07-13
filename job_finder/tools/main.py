@@ -187,3 +187,29 @@ def extract_ashby_fields(job: dict) -> tuple[str | None, bool]:
     """
     country = job.get("address", {}).get("postalAddress", {}).get("addressCountry")
     return (country, job.get("isRemote") is True)
+
+
+def extract_greenhouse_fields(job: dict) -> tuple[str | None, bool]:
+    """Map a Greenhouse job JSON to normalized ``(country, is_remote)``.
+
+    Shape: ``boards-api.greenhouse.io/v1/boards/{co}/jobs/{id}``. Greenhouse gives
+    **no** structured country or remote flag (verified live) — both are free text:
+
+    - ``is_remote`` is a text scan of ``location.name`` (``"remote"`` substring,
+      case-insensitive) — the only remote signal available, unlike the structured
+      flags Lever/Ashby expose.
+    - ``country`` prefers the structured ``offices[].location`` (spells countries
+      out — ``"United States"`` — matching a country-name target better than
+      ``location.name``'s ``"U.S."``); multiple offices are joined so a substring
+      target hits any of them. ``None`` office entries are dropped. Falls back to
+      ``location.name`` when there are no usable offices (mostly remote jobs, kept
+      anyway via ``is_remote``), and to ``None`` when nothing is present.
+
+    Deferred: country abbreviation/normalization (``"IE"`` vs ``"Ireland"``) — the
+    same cross-vendor normalization gap noted in the design amendment.
+    """
+    location_name = (job.get("location") or {}).get("name") or ""
+    is_remote = "remote" in location_name.lower()
+    offices = [o.get("location") for o in job.get("offices", []) if o.get("location")]
+    country = " | ".join(offices) if offices else (location_name or None)
+    return (country, is_remote)
