@@ -172,3 +172,18 @@ def extract_lever_fields(job: dict) -> tuple[str | None, bool]:
     keep-regardless-of-country pass. Missing ``country`` -> ``None`` (unknown).
     """
     return (job.get("country"), job.get("workplaceType") in ("remote", "hybrid"))
+
+
+def extract_ashby_fields(job: dict) -> tuple[str | None, bool]:
+    """Map an Ashby posting JSON to normalized ``(country, is_remote)``.
+
+    Shape: ``api.ashbyhq.com/posting-api/job-board/{co}`` (board-level list) ->
+    ``country`` is nested at ``address.postalAddress.addressCountry`` (a full name
+    like ``"United States"``); each level can be absent, so it's navigated with
+    chained ``.get(..., {})`` and falls back to ``None`` (unknown). ``isRemote`` is
+    **tri-state** (``True`` / ``False`` / ``None`` — verified live, ``None`` is
+    common): only an explicit ``True`` counts as remote, so ``None``/``False``/
+    absent all default to location-bound (``False``).
+    """
+    country = job.get("address", {}).get("postalAddress", {}).get("addressCountry")
+    return (country, job.get("isRemote") is True)
