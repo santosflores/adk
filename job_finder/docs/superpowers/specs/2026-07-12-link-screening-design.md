@@ -110,3 +110,75 @@ Real ATS HTML captured to fixtures during Red (see one live sample per vendor).
   the others).
 - Timeout is treated as dead (drop). Revisit if it drops too many transiently-
   slow but live links.
+
+---
+
+## Amendment 2026-07-13 — mechanism pivot: JSON-LD → ATS JSON APIs
+
+**Trigger:** before implementing the parse step, we probed one live page per ATS
+(the "capture a real fixture in Red" step, done early to de-risk). The
+shared-JSON-LD assumption did not survive contact with reality.
+
+### What the probe found
+
+| ATS | JSON-LD in raw HTML? | `jobLocationType` | country in JSON-LD |
+| --- | --- | --- | --- |
+| Ashby (openai) | present | — | `jobLocation` present |
+| Lever (palantir) | present | `None` | `addressCountry` **null** (only `"Palo Alto, CA"`) |
+| Greenhouse (discord, hosted board) | **0 blocks** | — | absent |
+
+Three fatal problems for the JSON-LD plan: Greenhouse emits **no** JSON-LD on its
+hosted board; `jobLocationType` is unreliable (Lever leaves it null); and
+`addressCountry` is often null, forcing fuzzy free-text country matching.
+
+By contrast the **public ATS JSON APIs** — reachable from the `id` we already
+extract plus the company slug (`parts[3]` of the URL in all three ATSes) — return
+clean, structured data:
+
+| ATS | endpoint | country | remote signal | dead |
+| --- | --- | --- | --- | --- |
+| Lever | `api.lever.co/v0/postings/{co}/{id}` | `country: "US"` | `workplaceType: "remote"/"hybrid"/"on-site"` | 404 |
+| Greenhouse | `boards-api.greenhouse.io/v1/boards/{co}/jobs/{id}` | `offices[].location` (has country) / `location.name` | text in `location.name` (e.g. `"… (Remote (U.S.))"`) | 404 |
+| Ashby | `api.ashbyhq.com/posting-api/job-board/{co}` (board-level list) | `address.postalAddress.addressCountry: "United States"` | `isRemote` | `id` absent from list |
+
+### Decision
+
+**Pivot the mechanism to the ATS JSON APIs (revives the rejected Approach C).**
+The only cost of Approach C in brainstorming ("3 more endpoints") is outweighed
+now that the HTML path is demonstrably broken. The APIs also make the pure layer
+*easier* to test (JSON dict in → decision out, no HTML scraping) and finally give
+a real remote/hybrid/on-site field — the structured "type" the user wanted.
+
+### Revised mechanism
+
+- **Fetch (glue, per-vendor):** build the API URL from `id` + company slug.
+  Lever / Greenhouse are single-job-by-id (404 = dead). Ashby is board-level:
+  fetch the board once per company, and `id`-not-in-list = dead. Dedupe companies
+  so Ashby is one call per company, not per post.
+- **HTTP status → deadness** still via `is_dead` (unchanged, already built).
+  Ashby "id absent" maps to a dead sentinel in the glue.
+
+### Revised pure layer (`tools/main.py`)
+
+- `is_dead(status_code)` — **unchanged, already implemented and committed.**
+- Per-vendor field extractors (house-style duplication, like `extract_*_link`),
+  each mapping that vendor's JSON to a normalized `(country: str | None,
+  is_remote: bool)`:
+  - `extract_lever_fields(job: dict) -> tuple[str | None, bool]`
+  - `extract_greenhouse_fields(job: dict) -> tuple[str | None, bool]`
+  - `extract_ashby_fields(job: dict) -> tuple[str | None, bool]`
+- `location_matches(country: str, target: str) -> bool` — **simplified**:
+  case-insensitive substring of `target` in `country`. The remote-synonym branch
+  is **removed** (remote is now a structured bool, not scraped from text).
+- `should_keep(status_code: int, country: str | None, is_remote: bool, target:
+  str) -> bool` — dead → drop; `is_remote` → keep; `country is None` → keep
+  (unknown → keep, unchanged decision); else `location_matches(country, target)`.
+
+### New open / deferred
+
+- **Country representation mismatch:** Lever returns ISO (`"US"`), Ashby returns
+  full name (`"United States"`), Greenhouse returns free text. A `TARGET_LOCALE`
+  of `"Mexico"` won't substring-match Lever's `"MX"`. Deferred — surface per
+  vendor with real fixtures; a small alias map or multi-form target is the fix.
+- The original JSON-LD reps (`extract_job_location`) are **dropped** in favor of
+  the per-vendor API extractors above.
