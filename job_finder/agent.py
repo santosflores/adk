@@ -16,6 +16,7 @@ from .tools import (
     dedupe_posts,
     posts_to_rows,
 )
+from .tools.screen import screen_posts
 from datetime import datetime
 from google.adk import Agent, Context, Workflow, Event
 from google.adk.events import EventActions, RequestInput
@@ -108,6 +109,16 @@ def collect_posts(node_input: list[list[dict]]):
 
 
 @node
+async def screen_node(node_input: list[dict]):
+    target = os.getenv("TARGET_LOCALE")
+    if not target:
+        yield Event(output={"error": "missing configuration"})
+    else:
+        survivors = await screen_posts(node_input, target)
+        yield Event(output=survivors)
+
+
+@node
 def export_node(ctx: Context, node_input: list[dict]):
     spreadsheet_id = os.getenv("SHEETS_WORKBOOK_KEY")
     if not spreadsheet_id:
@@ -193,6 +204,7 @@ root_agent = Workflow(
         ),
         (get_ats_domains, crawl_node),
         (crawl_node, collect_posts),
-        (collect_posts, export_node),
+        (collect_posts, screen_node),
+        (screen_node, export_node),
     ],
 )
