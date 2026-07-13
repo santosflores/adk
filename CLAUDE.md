@@ -60,6 +60,54 @@ Red → Green → Refactor. Do **not** implement for them unless asked.
 
 ## Changelog — current state
 
+### 2026-07-13
+
+- **Session goal: screen collected links — follow each, read it, drop dead + wrong-locale
+  posts** before export (complete). New `screen_node` between `collect_posts` and
+  `export_node`. Suite now **66 passing** (25 new cases across 6 test files).
+- **Mechanism pivot mid-build (the session's big lesson): JSON-LD → ATS JSON APIs.** Design
+  started on "HTTP GET each page + parse a shared schema.org `JobPosting` JSON-LD." Before
+  writing the parser we **probed one live page per ATS** (empirical, like the 06-10 dedup
+  measurement) and the shared-contract assumption collapsed: **Greenhouse emits no JSON-LD** on
+  its hosted board, Lever's `jobLocationType` is null and `addressCountry` is null (only
+  `"Palo Alto, CA"`). Probing the **public ATS JSON APIs** instead — reachable from the `id` we
+  already extract + the company slug (`parts[3]` of every ATS URL) — gave clean structured data:
+  Lever `country`+`workplaceType`, Ashby `addressCountry`+`isRemote`, Greenhouse `offices`. So we
+  revived the brainstorming-rejected "Approach C." Recorded as an amendment in the spec.
+- **Pure layer (TDD'd, fast tier, `tools/main.py`), build order:**
+  - `is_dead(status_code)` — dead = `{404,410,0-sentinel}` ∪ `>=500`. **Allowlist lesson:**
+    first impl was `code >= 404` (passed the 5 cases but marked `429`/`403` dead → would drop live
+    jobs); a `(429, False)` Red forced the exact-set-plus-range shape. Enumerate the small stable
+    set; default unknowns to the safe direction.
+  - `location_matches(country, target)` — case-insensitive substring; remote-synonym branch
+    **removed** (remote became a structured bool, not a text scrape).
+  - Per-vendor `extract_{lever,ashby,greenhouse}_fields(job) -> (country, is_remote)` — house-style
+    duplication (like `extract_*_link`). **Real-data catches:** Lever's on-site value is `"onsite"`
+    (no hyphen) — a *guessed* `"on-site"` fixture made a broken `!= "on-site"` denylist pass green
+    (allowlist `workplaceType in ("remote","hybrid")` fixed it — "hybrid is fine" = keep). Ashby
+    `isRemote` is **tri-state** (True/False/**None**, None common) → only explicit `True` counts.
+    Greenhouse has no structured country/remote → `is_remote` is a text scan of `location.name`,
+    `country` prefers structured `offices[].location` with `location.name` fallback.
+  - `should_keep(status_code, country, is_remote, target)` — the one decision point; guard order
+    **dead → remote → unknown-country(keep) → location_matches**. Dead beats a remote in-locale job.
+- **Glue (`tools/screen.py`, not unit-tested per house rule):** async `httpx` per-vendor fetch,
+  bounded `Semaphore(10)`. Lever/Greenhouse are single-job-by-id (404 = dead); **Ashby is
+  board-level** — pre-fetch each company's board once, `id`-absent = dead. Deliberately kept out of
+  `agent.py`/`google.adk` so it's headlessly runnable. `screen_node` in `agent.py` is a thin
+  adapter (reads `TARGET_LOCALE`, missing → error Event, not a silent dead-end).
+- **Verification instead of `adk web`:** `job_finder/verify_screen.py` exercises the real
+  fetch+parse+decide path against live APIs with a live + deliberately-dead post per ATS —
+  **7 posts → 3 survivors**, every live/dead/wrong-locale path correct. (Full workflow through
+  `adk web` still worth a run for the SerpAPI+LLM front half.)
+- **Config/deps:** `TARGET_LOCALE` in `.env` (git-ignored); `httpx==0.28.1` pinned in
+  `requirements.txt`. Spec + amendment at
+  `docs/superpowers/specs/2026-07-12-link-screening-design.md`; plan at
+  `docs/superpowers/plans/2026-07-13-link-screening.md`.
+- **Open / deferred:** cross-vendor **country normalization** (`"US"` vs `"United States"` vs
+  Greenhouse free text / ISO `"IE"`) — a `TARGET_LOCALE` must currently match the vendor's spelling;
+  fix is an alias map or multi-form target. The Lever `extract_lever_link` clean-before-check
+  reorder (open since 06-10) is still open.
+
 ### 2026-06-22
 
 - **Session goal: export results to a Google Sheets workbook** (complete). Built via the
