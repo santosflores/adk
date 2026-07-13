@@ -150,3 +150,8 @@ def posts_to_rows(posts: list[dict]) -> list[list]:
         row = [p.get(e, "") for e in EXPORT_COLUMNS]
         rows.append(row)
     return rows
+
+
+def is_dead(http_code: int) -> bool:
+    dead_codes = [404, 410, 0]
+    return http_code in dead_codes or http_code >= 500

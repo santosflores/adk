@@ -1,6 +1,7 @@
 from .main import (
     normalize_role,
     is_confident,
+    is_dead,
     extract_text,
     parse_page,
     extract_ashby_link,
