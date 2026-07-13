@@ -213,3 +213,26 @@ def extract_greenhouse_fields(job: dict) -> tuple[str | None, bool]:
     offices = [o.get("location") for o in job.get("offices", []) if o.get("location")]
     country = " | ".join(offices) if offices else (location_name or None)
     return (country, is_remote)
+
+
+def should_keep(
+    status_code: int, country: str | None, is_remote: bool, target: str
+) -> bool:
+    """Decide whether a screened post survives, composing the pure helpers.
+
+    Single decision point for the link-screening step. Guard order matters — each
+    guard assumes the prior didn't fire:
+
+    1. dead (``is_dead``) -> drop, even a remote in-locale job (dead beats all).
+    2. ``is_remote`` -> keep, regardless of country (remote-OK).
+    3. ``country is None`` -> keep (unknown location is kept, per the design —
+       never drop a possibly-good post just because we couldn't read its country).
+    4. else -> ``location_matches(country, target)``.
+    """
+    if is_dead(status_code):
+        return False
+    if is_remote:
+        return True
+    if country is None:
+        return True
+    return location_matches(country, target)
