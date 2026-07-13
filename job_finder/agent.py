@@ -145,7 +145,9 @@ async def crawl_node(ctx: Context, node_input: Any):
     serp_params = {
         "q": f"site:{node_input} {ctx.state['job_position']}",
         "engine": "duckduckgo",
-        "m": 20,
+        "m": 50,
+        "kl": "us-en",
+        
     }
     while True:
         if len(posts) > 0:
