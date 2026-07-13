@@ -159,3 +159,16 @@ def is_dead(http_code: int) -> bool:
 
 def location_matches(location: str, target: str) -> bool:
     return target.lower() in location.lower()
+
+def extract_lever_fields(job: dict) -> tuple[str | None, bool]:
+    """Map a Lever posting JSON to normalized ``(country, is_remote)``.
+
+    Shape: ``api.lever.co/v0/postings/{co}/{id}`` -> ``country`` is an ISO code
+    (``"US"``), ``workplaceType`` is one of ``remote`` / ``hybrid`` / ``onsite``
+    (real values, verified live — note ``onsite`` has no hyphen). ``is_remote``
+    is an **allowlist** of the location-flexible types (``remote``, ``hybrid`` —
+    "hybrid is fine" per the design): any other/absent value defaults to
+    location-bound (``False``), so an unknown future type never wrongly earns the
+    keep-regardless-of-country pass. Missing ``country`` -> ``None`` (unknown).
+    """
+    return (job.get("country"), job.get("workplaceType") in ("remote", "hybrid"))

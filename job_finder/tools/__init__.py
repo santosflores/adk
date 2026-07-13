@@ -9,5 +9,6 @@ from .main import (
     extract_lever_link,
     dedupe_posts,
     posts_to_rows,
-    location_matches
+    location_matches,
+    extract_lever_fields,
 )
